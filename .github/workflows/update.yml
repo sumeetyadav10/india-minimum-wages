@@ -1,0 +1,25 @@
+name: Update dataset
+on:
+  schedule:
+    - cron: "30 3 * * *"   # 09:00 IST daily
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the published CSV
+        run: |
+          curl -fsSL -A "india-minimum-wages-dataset (GitHub Actions)" -o data/new.csv https://msmetools.com/data/india-minimum-wages.csv
+          # refuse an empty or truncated download
+          test "$(wc -l < data/new.csv)" -gt 100
+          head -1 data/new.csv | grep -q '^state,state_code,'
+          mv data/new.csv data/india-minimum-wages.csv
+      - name: Commit if changed
+        run: |
+          git config user.name "dataset-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/india-minimum-wages.csv
+          git diff --cached --quiet || git commit -m "Update minimum wage data $(date -u +%Y-%m-%d)" && git push
